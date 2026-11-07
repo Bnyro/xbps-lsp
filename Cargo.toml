@@ -1,0 +1,10 @@
+[package]
+name = "xbps-lsp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex = "1.13.1"
+tempfile = "3.27.0"
+tokio = { version = "1.54.1", features = ["full"] }
+tower-lsp-server = "0.23.0"
