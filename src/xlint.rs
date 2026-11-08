@@ -38,7 +38,7 @@ mod tests {
     fn simple_diagnostics() {
         let diagnostics_engine = XlintDiagnosticsEngine::new(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("vendored")
+                .join("test")
                 .join("foo.template"),
         )
         .unwrap();

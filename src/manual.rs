@@ -30,7 +30,8 @@ pub struct Manual {
 
 impl Default for Manual {
     fn default() -> Self {
-        let manual_parser = MarkdownParser::new(include_str!("../vendored/Manual.md"));
+        let manual_parser =
+            MarkdownParser::new(include_str!(concat!(env!("OUT_DIR"), "/Manual.md")));
 
         let global_functions = manual_parser
             .list_bullet_points("### Global functions")
