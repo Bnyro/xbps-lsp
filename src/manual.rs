@@ -19,6 +19,12 @@ pub struct GlobalFunction {
     pub description: String,
 }
 
+#[derive(Debug)]
+pub struct BuildStyle {
+    pub name: String,
+    pub description: String,
+}
+
 /** Parsed variable and function definitions from `Manual.md`. */
 #[derive(Debug)]
 pub struct Manual {
@@ -26,6 +32,7 @@ pub struct Manual {
     pub template_functions: Vec<TemplateFunction>,
     pub global_variables: Vec<Variable>,
     pub global_functions: Vec<GlobalFunction>,
+    pub build_styles: Vec<BuildStyle>,
 }
 
 impl Default for Manual {
@@ -112,11 +119,27 @@ impl Default for Manual {
         })
         .collect();
 
+        let build_styles = manual_parser
+            .list_bullet_points("### build style scripts")
+            .unwrap()
+            .iter()
+            .skip(1) // skip explanation about empty build style
+            .map(|section| {
+                let (name, desc) = section.split_once(" ").unwrap();
+
+                BuildStyle {
+                    name: name.replace("`", "").trim().to_string(),
+                    description: desc.trim().to_string(),
+                }
+            })
+            .collect();
+
         Self {
             template_variables,
             template_functions,
             global_variables,
             global_functions,
+            build_styles,
         }
     }
 }

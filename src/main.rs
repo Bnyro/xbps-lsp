@@ -65,10 +65,21 @@ impl Backend {
             ..Default::default()
         });
 
+        let build_styles = &MANUAL.build_styles;
+        let build_styles = build_styles.iter().map(|b| CompletionItem {
+            label: b.name.clone(),
+            documentation: Some(Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: b.description.clone(),
+            })),
+            ..Default::default()
+        });
+
         template_variables
             .chain(template_functions)
             .chain(global_variables)
             .chain(global_functions)
+            .chain(build_styles)
             .collect::<Vec<_>>()
     }
 
@@ -90,6 +101,7 @@ impl Backend {
                     },
                 },
                 message: desc.to_string(),
+                severity: Some(DiagnosticSeverity::ERROR),
                 ..Default::default()
             })
             .collect()
