@@ -39,16 +39,20 @@ mod tests {
         let diagnostics_engine = XlintDiagnosticsEngine::new(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("test")
-                .join("foo.template"),
+                .join("foo")
+                .join("template"),
         )
         .unwrap();
         let diagnostics = diagnostics_engine.diagnostics().unwrap();
-        assert_eq!(diagnostics.len(), 8);
+        assert_eq!(diagnostics.len(), 4);
 
         // make sure the linenos are properly 0-based
         assert_eq!(
             diagnostics[0],
-            (2, "variable set to empty string: version=".to_string())
+            (
+                12,
+                "variable set to empty string: hostmakedepends=\"\"".to_string()
+            )
         );
     }
 }

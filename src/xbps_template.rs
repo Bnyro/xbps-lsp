@@ -4,15 +4,37 @@ use std::{
     path::Path,
 };
 
-pub struct TextDocument {
+pub struct XBPSTemplate {
     text: String,
 }
-impl TextDocument {
-    pub fn new(path: &Path) -> io::Result<Self> {
+impl XBPSTemplate {
+    pub fn from_path(path: &Path) -> io::Result<Self> {
         let mut text = String::new();
         File::open(path)?.read_to_string(&mut text)?;
 
         Ok(Self { text })
+    }
+
+    pub fn from_text(text: String) -> Self {
+        Self { text }
+    }
+
+    pub fn variable_value(&self, variable_name: &str) -> Option<(usize, String)> {
+        // TODO: currently can't handle multiline strings (e.g. multiline distfiles)
+        for (lineno, line) in self.text.lines().enumerate() {
+            if line.starts_with(&format!("{variable_name}=")) {
+                return Some((
+                    lineno,
+                    line.split_once("=")
+                        .unwrap()
+                        .1
+                        .trim_matches('"')
+                        .to_string(),
+                ));
+            }
+        }
+
+        None
     }
 
     pub fn identifier_at_pos(&self, line: u32, character: u32) -> Option<(String, u32, u32)> {
@@ -44,17 +66,17 @@ impl TextDocument {
 
 #[cfg(test)]
 mod tests {
-    use crate::text_document::TextDocument;
+    use crate::xbps_template::XBPSTemplate;
 
     #[test]
     fn identifier_position() {
-        let document = TextDocument {
-            text: r#"build_style=rust
+        let document = XBPSTemplate::from_text(
+            r#"build_style=rust
 do_install() {
     
 }"#
             .to_string(),
-        };
+        );
 
         assert_eq!(
             document.identifier_at_pos(0, 0),

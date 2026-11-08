@@ -1,6 +1,6 @@
 # Template file for 'foo'
 pkgname=foo
-version=
+version=0.0.0
 revision=1
 #archs="i686 x86_64"
 #build_wrksrc=
@@ -13,10 +13,10 @@ build_style=gnu-configure
 hostmakedepends=""
 makedepends=""
 depends=""
-short_desc=""
+short_desc="foo"
 maintainer="Orphaned <orphan@voidlinux.org>"
 license="GPL-3.0-or-later"
-homepage=""
+homepage="https://example.com"
 #changelog=""
-distfiles=""
+distfiles="https://example.com"
 checksum=badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb

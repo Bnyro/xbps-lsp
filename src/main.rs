@@ -5,12 +5,15 @@ use tower_lsp_server::jsonrpc::Result;
 use tower_lsp_server::ls_types::*;
 use tower_lsp_server::{Client, LanguageServer, LspService, Server};
 
-use crate::text_document::TextDocument;
+use crate::update_check::{UpdateCheckError, UpdateChecker};
+use crate::xbps_template::XBPSTemplate;
 use crate::xlint::XlintDiagnosticsEngine;
 
+mod bash_executor;
 mod manual;
 mod markdown;
-mod text_document;
+mod update_check;
+mod xbps_template;
 mod xlint;
 
 static MANUAL: LazyLock<manual::Manual> = LazyLock::new(manual::Manual::default);
@@ -18,6 +21,19 @@ static MANUAL: LazyLock<manual::Manual> = LazyLock::new(manual::Manual::default)
 #[derive(Debug)]
 struct Backend {
     client: Client,
+}
+
+fn range_from_lineno(lineno: u32) -> Range {
+    Range {
+        start: Position {
+            line: lineno,
+            character: 0,
+        },
+        end: Position {
+            line: lineno,
+            character: 0,
+        },
+    }
 }
 
 impl Backend {
@@ -83,23 +99,14 @@ impl Backend {
             .collect::<Vec<_>>()
     }
 
-    fn diagnostics(&self, path: std::path::PathBuf) -> Vec<Diagnostic> {
-        let diagnostics_engine = XlintDiagnosticsEngine::new(path).unwrap();
-        diagnostics_engine
+    fn xlint_diagnostics(&self, path: std::path::PathBuf) -> Vec<Diagnostic> {
+        let xlint_engine = XlintDiagnosticsEngine::new(path).unwrap();
+        xlint_engine
             .diagnostics()
             .unwrap()
             .iter()
-            .map(|(line, desc)| Diagnostic {
-                range: Range {
-                    start: Position {
-                        line: *line,
-                        character: 0,
-                    },
-                    end: Position {
-                        line: *line,
-                        character: 0,
-                    },
-                },
+            .map(|(lineno, desc)| Diagnostic {
+                range: range_from_lineno(*lineno),
                 message: desc.to_string(),
                 severity: Some(DiagnosticSeverity::ERROR),
                 ..Default::default()
@@ -109,13 +116,47 @@ impl Backend {
 
     async fn update_diagnostics(&self, uri: Uri, text: String) {
         let mut tempfile = tempfile::NamedTempFile::new().unwrap();
-        tempfile.write_all(&text.into_bytes()).unwrap();
+        tempfile.write_all(&text.clone().into_bytes()).unwrap();
 
-        let diagnostics = self.diagnostics(tempfile.path().to_path_buf());
+        let mut diagnostics = self.xlint_diagnostics(tempfile.path().to_path_buf());
 
         self.client
-            .publish_diagnostics(uri, diagnostics, None)
+            .publish_diagnostics(uri.clone(), diagnostics.clone(), None)
             .await;
+
+        let update_checker = UpdateChecker::new(text, uri.to_file_path().unwrap().to_path_buf());
+
+        let Some((version_lineno, _)) = update_checker.current_version() else {
+            return;
+        };
+        // TODO: cache latest version, so that this doesn't get run each time the file changes
+        match update_checker.new_version() {
+            Ok(Some(version)) => {
+                diagnostics.push(Diagnostic {
+                    range: range_from_lineno(version_lineno as u32),
+                    severity: Some(DiagnosticSeverity::WARNING),
+                    message: format!("new version available: {version}"),
+                    ..Default::default()
+                });
+
+                self.client
+                    .publish_diagnostics(uri, diagnostics, None)
+                    .await;
+            }
+            Err(UpdateCheckError::NoVersionFound) => {
+                diagnostics.push(Diagnostic {
+                    range: range_from_lineno(version_lineno as u32),
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    message: "no version found, please override the `update` file".to_string(),
+                    ..Default::default()
+                });
+
+                self.client
+                    .publish_diagnostics(uri, diagnostics, None)
+                    .await;
+            }
+            _ => {}
+        }
     }
 }
 
@@ -165,7 +206,7 @@ impl LanguageServer for Backend {
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
         let path = params.text_document.uri.to_file_path().unwrap();
-        let diagnostics = self.diagnostics(path.to_path_buf());
+        let diagnostics = self.xlint_diagnostics(path.to_path_buf());
 
         Ok(DocumentDiagnosticReportResult::Report(
             DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
@@ -179,7 +220,7 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let doc = TextDocument::new(
+        let doc = XBPSTemplate::from_path(
             &params
                 .text_document_position_params
                 .text_document
