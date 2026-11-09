@@ -1,6 +1,6 @@
 # xbps-lsp
 
-`xbps-lsp` is an LSP (language server protocol) server for XBPS package templates.
+`xbps-lsp` is an LSP (language server protocol) server for XBPS package templates, which are primarily used in [Void Linux](https://voidlinux.org).
 
 Features:
 - Auto-completions (kind of barebones, but work)
@@ -38,5 +38,5 @@ command = "xbps-lsp"
 Your LSP client should call `xbps-lsp` (without arguments), then it should work out of the box.
 
 ## Credits
-- The Void Linux [manual](https://github.com/void-linux/void-packages/blob/master/Manual.md) has awesome explanations on how-to-write XBPS package template. `typos-lsp` sources its documentation from the official manual.
+- The Void Linux [manual](https://github.com/void-linux/void-packages/blob/master/Manual.md) has awesome explanations on how-to-write XBPS package templates. `xbps-lsp` sources its documentation from the official manual.
 - [`xlint`](https://github.com/leahneukirchen/xtools) was the main motivation to build this tool
